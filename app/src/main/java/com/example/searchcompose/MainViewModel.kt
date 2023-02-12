@@ -1,8 +1,9 @@
 package com.example.searchcompose
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 
 class MainViewModel: ViewModel() {
 
@@ -13,10 +14,30 @@ class MainViewModel: ViewModel() {
     private val _isSearching = MutableStateFlow(false)
     val isSearching = _isSearching.asStateFlow()
 
-    private val _person = MutableStateFlow(listOf<Person>())
+    private val _persons = MutableStateFlow(allPerson)
+    val persons = searchText
+        .debounce(1000L)
+        .onEach { _isSearching.update { true } }
+        .combine(_persons){text, persons ->
+            if (text.isBlank()) {
+                persons
+            } else {
+                delay(2000L)
+                persons.filter {
+                    it.doesMatchSearchQuery(text)
+                }
+            }
+        }
+        .onEach { _isSearching.update { false } }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            _persons.value
+        )
 
-
-
+    fun onSearchTextChange(text:String){
+        _searchText.value=text
+    }
 
 }
 
